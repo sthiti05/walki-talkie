@@ -9,7 +9,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
-    return GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    return GoogleGenerativeAIEmbeddings(model="models/geminiembedding-001")
 
 
 def embed_text(text: str) -> List[float]:
