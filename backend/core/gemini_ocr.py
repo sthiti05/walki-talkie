@@ -9,29 +9,17 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 
 def extract_text_from_pdf(pdf_path: str) -> str:
-    """
-    Extract text from a PDF using Gemini's vision capabilities via LangChain.
-    
-    Args:
-        pdf_path: Path to the PDF file
-    
-    Returns:
-        Extracted text from the PDF
-    """
     import base64
     
     pdf_path = Path(pdf_path)
     if not pdf_path.exists():
         raise FileNotFoundError(f"PDF not found: {pdf_path}")
     
-    # Read and encode PDF as base64
     with open(pdf_path, "rb") as f:
         pdf_data = base64.standard_b64encode(f.read()).decode("utf-8")
     
-    # Initialize Gemini model
     llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
     
-    # Create message with PDF
     message = HumanMessage(
         content=[
             {

@@ -31,17 +31,8 @@ class QueryResult:
     query: str
 
 
-def get_llm(model: str = "gemini-3-pro", temperature: float = 0.3) -> ChatGoogleGenerativeAI:
-    """
-    Get a configured Gemini LLM instance.
-    
-    Args:
-        model: Model name to use
-        temperature: Sampling temperature (0-1)
-        
-    Returns:
-        Configured ChatGoogleGenerativeAI instance
-    """
+def get_llm(model: str = "gemini-3-flash-preview", temperature: float = 0.3) -> ChatGoogleGenerativeAI:
+ 
     return ChatGoogleGenerativeAI(
         model=model,
         temperature=temperature
@@ -53,28 +44,15 @@ def retrieve_context(
     document_id: Optional[str] = None,
     top_k: int = 5
 ) -> List[SourceReference]:
-    """
-    Retrieve relevant chunks for a query using vector similarity search.
     
-    Args:
-        query: The user's question
-        document_id: Optional document to search within
-        top_k: Number of chunks to retrieve
-        
-    Returns:
-        List of SourceReference objects with relevant content
-    """
-    # Generate embedding for the query
     query_embedding = embed_text(query)
     
-    # Search for similar chunks
     results = search_similar_chunks(
         query_embedding=query_embedding,
         document_id=document_id,
         limit=top_k
     )
     
-    # Convert to SourceReference objects
     sources = []
     for result in results:
         sources.append(SourceReference(
@@ -88,14 +66,12 @@ def retrieve_context(
 
 
 def build_context_string(sources: List[SourceReference]) -> str:
-    """Build a formatted context string from source references."""
     context_parts = []
     for i, source in enumerate(sources, 1):
         context_parts.append(f"[Source {i}]\n{source.content}")
     return "\n\n".join(context_parts)
 
 
-# RAG Prompt Template
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", """You are a helpful assistant that answers questions based on the provided context from PDF documents.
 
@@ -118,26 +94,8 @@ def query_pdf(
     question: str,
     document_id: Optional[str] = None,
     top_k: int = 5,
-    model: str = "gemini-3-pro"
-) -> QueryResult:
-    """
-    Answer a question about a PDF using RAG.
-    
-    This function:
-    1. Embeds the question
-    2. Retrieves relevant chunks via similarity search
-    3. Generates an answer with source citations
-    
-    Args:
-        question: The user's question
-        document_id: Optional specific document to query
-        top_k: Number of context chunks to retrieve
-        model: LLM model to use for generation
-        
-    Returns:
-        QueryResult with answer and source references
-    """
-    # Step 1: Retrieve relevant context
+    model: str = "gemini-3-flash-preview"
+) -> QueryResult:     
     sources = retrieve_context(question, document_id, top_k)
     
     if not sources:
@@ -147,10 +105,8 @@ def query_pdf(
             query=question
         )
     
-    # Step 2: Build context string
     context = build_context_string(sources)
     
-    # Step 3: Generate answer using LLM
     llm = get_llm(model)
     chain = RAG_PROMPT | llm | StrOutputParser()
     
@@ -188,51 +144,35 @@ def format_result(result: QueryResult) -> str:
 
 # --- TESTING ---
 if __name__ == "__main__":
-    from database import init_db, create_document, create_chunks, delete_document
-    from embedding import embed_text, embed_texts, chunk_text
+    from database import init_db, list_documents
     
     print("Testing RAG Query Engine...")
     print("-" * 50)
     
-    # Initialize database
     init_db()
     
-    # Create test document with sample content
-    test_content = """
-    Machine learning is a subset of artificial intelligence that enables systems to learn from data.
+    # Check for existing documents in database
+    docs = list_documents()
     
-    Deep learning uses neural networks with multiple layers to process complex patterns.
-    Neural networks are inspired by the human brain's structure.
-    
-    Natural language processing (NLP) helps computers understand human language.
-    Common NLP tasks include sentiment analysis, translation, and question answering.
-    
-    Computer vision enables machines to interpret visual information from images and videos.
-    Applications include facial recognition, object detection, and autonomous vehicles.
-    """
-    
-    # Create document
-    doc_id = create_document(
-        filename="test_ml_document.pdf",
-        extracted_text=test_content,
-        page_count=1
-    )
-    print(f"✓ Created test document: {doc_id}")
-    
-    # Chunk and embed the content
-    chunks = chunk_text(test_content, chunk_size=200, chunk_overlap=50)
-    chunk_embeddings = embed_texts(chunks)
-    create_chunks(doc_id, list(zip(chunks, chunk_embeddings)))
-    print(f"✓ Created {len(chunks)} chunks with embeddings")
-    
-    # Test query
-    test_question = "What is deep learning and how does it relate to neural networks?"
-    print(f"\n🔍 Testing query: '{test_question}'")
-    
-    result = query_pdf(test_question, document_id=doc_id)
-    print(format_result(result))
-    
-    # Cleanup
-    delete_document(doc_id)
-    print("\n✓ Cleaned up test document")
-    print("\n✅ RAG Query Engine test complete!")
+    if not docs:
+        print("⚠️  No documents in database!")
+        print("First process a PDF using pipeline.py:")
+        print("  uv run python core/pipeline.py your_document.pdf")
+    else:
+        print(f"Found {len(docs)} document(s) in database:\n")
+        for i, doc in enumerate(docs, 1):
+            print(f"{i}. {doc['filename']} (ID: {doc['id'][:8]}...)")
+        
+        # Use the first document for testing
+        doc_id = docs[0]['id']
+        print(f"\n🔍 Testing query on: {docs[0]['filename']}")
+        
+        # Test query
+        test_question = "What is this document about?"
+        print(f"   Question: '{test_question}'")
+        
+        result = query_pdf(test_question, document_id=doc_id)
+        print("\n" + format_result(result))
+        
+        print("\n✅ RAG Query Engine test complete!")
+
