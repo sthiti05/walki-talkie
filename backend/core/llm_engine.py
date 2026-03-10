@@ -31,7 +31,7 @@ class QueryResult:
     query: str
 
 
-def get_llm(model: str = "gemini-3-flash-preview", temperature: float = 0.3) -> ChatGoogleGenerativeAI:
+def get_llm(model: str = "gemini-3.1-flash-preview", temperature: float = 0.3) -> ChatGoogleGenerativeAI:
  
     return ChatGoogleGenerativeAI(
         model=model,
@@ -94,7 +94,7 @@ def query_pdf(
     question: str,
     document_id: Optional[str] = None,
     top_k: int = 5,
-    model: str = "gemini-3-flash-preview"
+    model: str = "gemini-2.5-flash"
 ) -> QueryResult:     
     sources = retrieve_context(question, document_id, top_k)
     

@@ -11,7 +11,8 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 def get_embedding_model() -> GoogleGenerativeAIEmbeddings:
     return GoogleGenerativeAIEmbeddings(
-        model="models/embedding-001"
+        model="gemini-embedding-001",
+        output_dimensionality=768,
     )
 
 
